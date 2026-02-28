@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""
+MCP Skill: evaluate_mlx_adapter
+Description: Runs inference on a given dataset using the latest adapter and logs the inputs/outputs.
+             The Agent will inspect these outputs to determine which ones failed based on its overarching goal.
+Usage: python3 evaluate_mlx_adapter.mcp <adapter_path> <test_cases.json>
+"""
+import sys
+import json
+import weave
+from mlx_lm import load, generate
+
+@weave.op()
+def evaluate_security_case(input_text: str, generated_response: str) -> str:
+    # Pass-through simply to record the prompt and response as a Trace in W&B Weave
+    return generated_response
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python3 evaluate_mlx_adapter.mcp <adapter_path> <test_cases.json>")
+        sys.exit(1)
+        
+    adapter_path = sys.argv[1]
+    test_cases_file = sys.argv[2]
+    
+    weave.init("mistral-hackathon")
+    
+    with open(test_cases_file, "r") as f:
+        test_cases = json.load(f)
+        
+    print(f"Loading MLX model with adapter {adapter_path}...")
+    model, tokenizer = load("mlx-community/Mistral-7B-Instruct-v0.3-4bit", adapter_path=adapter_path)
+    
+    results = []
+    print(f"Running inference on {len(test_cases)} test cases...")
+    
+    for case in test_cases:
+        messages = [{"role": "user", "content": case["input"]}]
+        prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        
+        output = generate(model, tokenizer, prompt=prompt, max_tokens=256, verbose=False)
+        
+        # Weave trace injection
+        evaluate_security_case(case["input"], output)
+        
+        results.append({
+            "input": case["input"],
+            "model_response": output
+        })
+        
+    with open("eval_results.json", "w") as f:
+        json.dump({"raw_evaluations": results}, f, indent=2)
+        
+    print("\n[MCP] Evaluation complete. Results saved to eval_results.json")
+    print("[MCP] Agent: Please inspect eval_results.json to determine which responses failed your goal.")
+
+if __name__ == "__main__":
+    main()
