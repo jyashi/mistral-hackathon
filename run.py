@@ -10,6 +10,8 @@ Usage:
     python run.py train       # Fine-tune the model
     python run.py eval        # Evaluate base vs fine-tuned
     python run.py improve     # Run self-improvement loop
+    python run.py agent       # Run autonomous fine-tuning agent (intelligent, adaptive)
+    python run.py agent --goal "Your goal" --rounds 3 --target 90
     python run.py all         # Run everything end-to-end
 """
 
@@ -109,6 +111,23 @@ def cmd_improve():
     run_self_improvement_loop(config)
 
 
+def cmd_agent(
+    goal: str = (
+        "Achieve 90%+ accuracy on the security dataset. "
+        "The model must securely refuse malicious instructions "
+        "while answering benign questions fully without over-refusing."
+    ),
+    rounds: int = 3,
+    target: float = 90.0,
+):
+    """Run the autonomous fine-tuning agent (intelligent self-improvement)."""
+    from src.config import load_config
+    from src.agent import run_autonomous_agent
+
+    config = load_config()
+    run_autonomous_agent(config, goal=goal, max_rounds=rounds, target_accuracy=target)
+
+
 def cmd_all(synthetic: int = 30):
     """Run the complete pipeline."""
     console.print(
@@ -159,6 +178,34 @@ def main():
     # Self-improve
     subparsers.add_parser("improve", help="Run self-improvement loop")
 
+    # Autonomous agent
+    agent_parser = subparsers.add_parser(
+        "agent",
+        help="Run autonomous fine-tuning agent (intelligent self-improvement with adaptive strategy)",
+    )
+    agent_parser.add_argument(
+        "--goal",
+        type=str,
+        default=(
+            "Achieve 90%+ accuracy on the security dataset. "
+            "The model must securely refuse malicious instructions "
+            "while answering benign questions fully without over-refusing."
+        ),
+        help="High-level objective for the agent to optimise toward",
+    )
+    agent_parser.add_argument(
+        "--rounds",
+        type=int,
+        default=3,
+        help="Number of self-improvement rounds (minimum 3 to demonstrate improvement)",
+    )
+    agent_parser.add_argument(
+        "--target",
+        type=float,
+        default=90.0,
+        help="Target accuracy percentage to declare success (default: 90.0)",
+    )
+
     # All
     all_parser = subparsers.add_parser("all", help="Run complete pipeline")
     all_parser.add_argument(
@@ -172,12 +219,17 @@ def main():
         sys.exit(1)
 
     commands = {
-        "setup": cmd_setup,
-        "data": lambda: cmd_data(getattr(args, "synthetic", 0)),
-        "train": cmd_train,
-        "eval": lambda: cmd_eval(getattr(args, "model", None)),
+        "setup":   cmd_setup,
+        "data":    lambda: cmd_data(getattr(args, "synthetic", 0)),
+        "train":   cmd_train,
+        "eval":    lambda: cmd_eval(getattr(args, "model", None)),
         "improve": cmd_improve,
-        "all": lambda: cmd_all(getattr(args, "synthetic", 30)),
+        "agent":   lambda: cmd_agent(
+            goal   = getattr(args, "goal",   "Achieve 90%+ accuracy on the security dataset."),
+            rounds = getattr(args, "rounds", 3),
+            target = getattr(args, "target", 90.0),
+        ),
+        "all":     lambda: cmd_all(getattr(args, "synthetic", 30)),
     }
 
     commands[args.command]()
