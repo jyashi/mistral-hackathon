@@ -51,6 +51,7 @@ def cmd_data(synthetic: int = 0):
     from src.config import load_config, init_wandb, get_mistral_client
     from src.data_prep import (
         TRAINING_EXAMPLES,
+        IDENTITY_CONFUSION_EXAMPLES,
         format_for_sft,
         save_dataset,
         generate_synthetic_data,
@@ -60,9 +61,12 @@ def cmd_data(synthetic: int = 0):
     config = load_config()
     run = init_wandb(config, run_name="data-preparation", job_type="data-prep")
 
-    # Start with built-in examples
-    all_examples = list(TRAINING_EXAMPLES)
-    console.print(f"[cyan]Built-in examples:[/cyan] {len(all_examples)}")
+    # Start with built-in examples (security + identity)
+    all_examples = list(TRAINING_EXAMPLES) + list(IDENTITY_CONFUSION_EXAMPLES)
+    console.print(
+        f"[cyan]Built-in examples:[/cyan] {len(TRAINING_EXAMPLES)} security + "
+        f"{len(IDENTITY_CONFUSION_EXAMPLES)} identity = {len(all_examples)} total"
+    )
 
     # Optionally generate synthetic data
     if synthetic > 0:
@@ -96,10 +100,11 @@ def cmd_train():
 def cmd_eval(fine_tuned_model: str = None):
     """Run evaluation."""
     from src.config import load_config
-    from src.evaluate import run_evaluation
+    from src.evaluate import run_evaluation, run_identity_evaluation
 
     config = load_config()
     run_evaluation(config, fine_tuned_model=fine_tuned_model)
+    run_identity_evaluation(config, fine_tuned_model=fine_tuned_model)
 
 
 def cmd_improve():
