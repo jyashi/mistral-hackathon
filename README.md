@@ -1,3 +1,5 @@
+Game repo link to test the models in a game environment : https://github.com/shakha-coding/mistral-ai-hackathon.git
+
 # 🏆 Mistral × W&B Hackathon — Fine-Tuning Track
 
 A complete fine-tuning pipeline for the **Mistral Worldwide Hackathon 2026**, built with **Weights & Biases** for maximum points.
